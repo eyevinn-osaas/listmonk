@@ -1,0 +1,71 @@
+# Stage 1: Build frontend
+FROM node:22-alpine AS frontend
+
+WORKDIR /app
+COPY frontend/package.json frontend/yarn.lock ./frontend/
+COPY frontend/email-builder/package.json frontend/email-builder/yarn.lock ./frontend/email-builder/
+
+# Create static directory needed by postinstall script
+RUN mkdir -p /app/static/public/static
+
+WORKDIR /app/frontend
+RUN yarn install --frozen-lockfile
+
+WORKDIR /app/frontend/email-builder
+RUN yarn install --frozen-lockfile
+
+WORKDIR /app
+COPY frontend/ ./frontend/
+COPY static/ ./static/
+
+WORKDIR /app/frontend/email-builder
+RUN yarn build
+
+WORKDIR /app/frontend
+RUN mkdir -p public/static/email-builder && \
+    cp -r ../frontend/email-builder/dist/* public/static/email-builder/ && \
+    touch .gitignore && \
+    yarn build
+
+# Stage 2: Build Go binary
+FROM golang:1.24-alpine AS builder
+
+ENV GOTOOLCHAIN=auto
+RUN apk add --no-cache make git
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+COPY --from=frontend /app/frontend/dist ./frontend/dist
+COPY --from=frontend /app/frontend/public/static/email-builder ./frontend/public/static/email-builder
+COPY --from=frontend /app/static/public/static/altcha.umd.js ./static/public/static/altcha.umd.js
+
+# Install stuffbin and build
+RUN go install github.com/knadh/stuffbin/...@latest
+RUN make build
+RUN stuffbin -a stuff -in listmonk -out listmonk \
+    config.toml.sample \
+    schema.sql queries:/queries permissions.json \
+    static/public:/public \
+    static/email-templates \
+    frontend/dist:/admin \
+    i18n:/i18n
+
+# Stage 3: Runtime
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates tzdata bash
+
+WORKDIR /listmonk
+
+COPY --from=builder /app/listmonk ./listmonk
+COPY config.toml.sample ./config.toml
+
+COPY --chmod=755 osc-entrypoint.sh /usr/local/bin/osc-entrypoint.sh
+
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/local/bin/osc-entrypoint.sh"]
+CMD ["sh", "-c", "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''"]
