@@ -33,7 +33,7 @@ if [ -n "$DATABASE_URL" ]; then
   export LISTMONK_db__user="${db_user}"
   export LISTMONK_db__password="${db_pass}"
   export LISTMONK_db__database="${db_path}"
-  export LISTMONK_db__ssl_mode="${LISTMONK_db__ssl_mode:-require}"
+  export LISTMONK_db__ssl_mode="${LISTMONK_db__ssl_mode:-disable}"
 fi
 
 # OSC Platform: Map uploads to persistent volume if available
