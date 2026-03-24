@@ -23,6 +23,6 @@ PGPASSWORD="${LISTMONK_db__password}" psql \
   -U "${LISTMONK_db__user}" \
   -d "${LISTMONK_db__database}" \
   --no-password \
-  -c "UPDATE settings SET value = jsonb_set(value::jsonb, '{app.root_url}', to_jsonb('${ROOT_URL}'::text)) WHERE 1=1"
+  -c "UPDATE settings SET value = to_jsonb('${ROOT_URL}'::text) WHERE key = 'app.root_url'"
 
 echo "osc-apply-settings: done"
