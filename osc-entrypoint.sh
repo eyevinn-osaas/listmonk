@@ -5,14 +5,6 @@ set -e
 # listmonk uses LISTMONK_app__address for its listen address
 export LISTMONK_app__address="0.0.0.0:${PORT:-8080}"
 
-# OSC Platform: Map OSC_HOSTNAME to listmonk's root_url
-# Always set root_url — listmonk defaults to http://localhost:9000 which is wrong on OSC
-if [ -n "$OSC_HOSTNAME" ]; then
-  export LISTMONK_app__root_url="https://${OSC_HOSTNAME}"
-else
-  export LISTMONK_app__root_url="${LISTMONK_app__root_url:-http://localhost:${PORT:-8080}}"
-fi
-
 # OSC Platform: Parse DATABASE_URL into listmonk's individual DB env vars
 if [ -n "$DATABASE_URL" ]; then
   # Extract components from postgresql://user:password@host:port/dbname?params

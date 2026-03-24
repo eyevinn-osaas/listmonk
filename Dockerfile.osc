@@ -56,7 +56,7 @@ RUN stuffbin -a stuff -in listmonk -out listmonk \
 # Stage 3: Runtime
 FROM alpine:latest
 
-RUN apk --no-cache add ca-certificates tzdata bash
+RUN apk --no-cache add ca-certificates tzdata bash postgresql-client
 
 WORKDIR /listmonk
 
@@ -64,8 +64,9 @@ COPY --from=builder /app/listmonk ./listmonk
 COPY config.toml.sample ./config.toml
 
 COPY --chmod=755 osc-entrypoint.sh /usr/local/bin/osc-entrypoint.sh
+COPY --chmod=755 osc-apply-settings.sh /usr/local/bin/osc-apply-settings.sh
 
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/local/bin/osc-entrypoint.sh"]
-CMD ["sh", "-c", "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''"]
+CMD ["sh", "-c", "./listmonk --install --idempotent --yes --config '' && osc-apply-settings.sh && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''"]
